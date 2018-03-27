@@ -4,21 +4,35 @@ const SerialPort = require('serialport');
 const readline =  require('readline');
 const pcol = require('parse-color');
 let port;
+const devices = {};
+let device;
 
 SerialPort.list()
 .then((data) => {
     let i = 0;
     data.forEach((row) => {
         console.log(`[${i}] ${row.comName}`);
+        devices[i] = row;
         i++;
     });
-    port = new SerialPort('/dev/tty.usbmodem14111', {
-        baudRate: 9600
-    });
-    port.on('open', function() {
-        console.log('[*] Connection open');
-        awaitInput(); 
-    });
+    const portPrompt = readline.createInterface(process.stdin, process.stdout);
+    portPrompt.setPrompt('Select your device: ');
+    portPrompt.prompt();
+    portPrompt.on('line', (portNumber) => {
+        if (devices[portNumber]) {
+            device = devices[portNumber].comName;
+        }
+        portPrompt.close();
+        //console.log('here', port, devices, device);
+        port = new SerialPort(device, {
+            baudRate: 9600
+        });
+        port.on('open', function() {
+            console.log('[*] Connection open');
+            awaitInput(); 
+        });
+    })
+
 })
 .catch(err => console.log(err));
 
@@ -55,13 +69,15 @@ function awaitInput() {
 }
 
 function sendData(input) {
-    port.write(input, function(err) {
-    if (err) {
-        return console.log('Error on write: ', err.message);
+    if (port) {
+        port.write(input, function(err) {
+        if (err) {
+            return console.log('Error on write: ', err.message);
+        }
+        //console.log('[*] Command Sent');
+        });
+        port.on('data', function(data) {
+            //console.log(data);
+        });
     }
-    //console.log('[*] Command Sent');
-    });
-    port.on('data', function(data) {
-        //console.log(data);
-    });
 }
