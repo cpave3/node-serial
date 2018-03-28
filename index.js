@@ -23,13 +23,12 @@ SerialPort.list()
             device = devices[portNumber].comName;
         }
         portPrompt.close();
-        //console.log('here', port, devices, device);
         port = new SerialPort(device, {
             baudRate: 9600
         });
         port.on('open', function() {
             console.log('[*] Connection open');
-            awaitInput(); 
+	    awaitInput();
         });
     })
 
@@ -37,6 +36,7 @@ SerialPort.list()
 .catch(err => console.log(err));
 
 function awaitInput() {
+    // Break readline stuff out of this function, causing listener error
     const rl = readline.createInterface(process.stdin, process.stdout);
     rl.setPrompt('Beacon >> ');
     rl.prompt();
@@ -49,12 +49,19 @@ function awaitInput() {
             console.log('[!] Quitting...');
             process.exit();
             break;
+        case 'open':
         case 'available':
-            sendData('0,255,0');
+            sendData('0,200,25');
             break;
-        case 'away':
+        case 'dnd':
+        case 'busy':
             sendData('255,0,0');
             break;
+        case 'afk':
+        case 'brb':
+	case 'away':
+	    sendData('255,25,0');
+	    break;
         default:
             if (pcol(line).rgb) {
                 sendData(pcol(line).rgb.join(','));
