@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "npm": "^5.8.0",
     "parse-color": "^1.0.0",
     "preferences": "^1.0.2",
     "serialport": "^6.1.1",

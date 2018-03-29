@@ -10,7 +10,7 @@ const devices = {};
 let device;
 const pref = new Preferences('com.bytedriven.beacon', {
 });
-
+let current;
 
 if (!pref.device) {
     SerialPort.list()
@@ -43,11 +43,18 @@ if (!pref.device) {
 function connectDevice() {
     port = new SerialPort(pref.device, {
         baudRate: 9600
-    });
-    port.on('open', function() {
+    })
+    port.open(function() {
+        port.on('error', function (err) {
+        if (err) {
+            console.log(`[!] ${err}`);
+            pref.device = null;
+            process.exit();
+        }
+        });
         console.log('[*] Connection open');
         awaitInput();
-    });
+    })
 }
 
 function awaitInput() {
@@ -56,6 +63,7 @@ function awaitInput() {
     rl.setPrompt(`[${pref.device}] > `);
     rl.prompt();
     rl.on('line', (line) => {
+        current = line;
         switch (line) {
         case 'clear.device':
             pref.device = null;
