@@ -3,45 +3,62 @@
 const SerialPort = require('serialport');
 const readline =  require('readline');
 const pcol = require('parse-color');
+const Preferences = require('preferences');
+ 
 let port;
 const devices = {};
 let device;
+const pref = new Preferences('com.bytedriven.beacon', {
+});
 
-SerialPort.list()
-.then((data) => {
-    let i = 0;
-    data.forEach((row) => {
-        console.log(`[${i}] ${row.comName}`);
-        devices[i] = row;
-        i++;
-    });
-    const portPrompt = readline.createInterface(process.stdin, process.stdout);
-    portPrompt.setPrompt('Select your device: ');
-    portPrompt.prompt();
-    portPrompt.on('line', (portNumber) => {
-        if (devices[portNumber]) {
-            device = devices[portNumber].comName;
-        }
-        portPrompt.close();
-        port = new SerialPort(device, {
-            baudRate: 9600
+
+if (!pref.device) {
+    SerialPort.list()
+    .then((data) => {
+        let i = 0;
+        data.forEach((row) => {
+            console.log(`[${i}] ${row.comName}`);
+            devices[i] = row;
+            i++;
         });
-        port.on('open', function() {
-            console.log('[*] Connection open');
-	    awaitInput();
-        });
+        const portPrompt = readline.createInterface(process.stdin, process.stdout);
+        portPrompt.setPrompt('Select your device: ');
+        portPrompt.prompt();
+        portPrompt.on('line', (portNumber) => {
+            if (devices[portNumber]) {
+                device = devices[portNumber].comName;
+                pref.device = device;
+                portPrompt.close();
+                connectDevice();        
+            }
+            
+        })
+
     })
+    .catch(err => console.log(err));
+} else {
+    connectDevice();
+}
 
-})
-.catch(err => console.log(err));
+function connectDevice() {
+    port = new SerialPort(pref.device, {
+        baudRate: 9600
+    });
+    port.on('open', function() {
+        console.log('[*] Connection open');
+        awaitInput();
+    });
+}
 
 function awaitInput() {
     // Break readline stuff out of this function, causing listener error
     const rl = readline.createInterface(process.stdin, process.stdout);
-    rl.setPrompt('Beacon >> ');
+    rl.setPrompt(`[${pref.device}] > `);
     rl.prompt();
     rl.on('line', (line) => {
         switch (line) {
+        case 'clear.device':
+            pref.device = null;
         case 'exit':
         case 'close':
         case 'quit':
@@ -57,10 +74,17 @@ function awaitInput() {
         case 'busy':
             sendData('255,0,0');
             break;
+	case 'personal':
+	case 'break':
+	    sendData('0,0,255');
+	    break;
         case 'afk':
         case 'brb':
 	case 'away':
 	    sendData('255,25,0');
+	    break;
+	case 'pink':
+	    sendData('255,30,30');
 	    break;
         default:
             if (pcol(line).rgb) {
